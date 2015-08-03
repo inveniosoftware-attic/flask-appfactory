@@ -1,0 +1,1 @@
+SIMPLEMODULE_VAR = True

@@ -1,0 +1,3 @@
+-e git+https://github.com/mitsuhiko/flask.git#egg=Flask
+-e git+https://github.com/inveniosoftware/flask-registry.git#egg=Flask-Registry
+-e git+https://github.com/inveniosoftware/flask-cli.git#egg=Flask-CLI

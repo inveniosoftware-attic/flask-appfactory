@@ -1,155 +1,37 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of Invenio.
-# Copyright (C) 2011, 2012, 2013, 2014, 2015 CERN.
+# This file is part of Flask-AppFactory
+# Copyright (C) 2015 CERN.
 #
-# Invenio is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+# Flask-AppFactory is free software; you can redistribute it and/or
+# modify it under the terms of the Revised BSD License; see LICENSE
+# file for more details.
 
-"""Implements the application factory."""
+"""Flask application factory."""
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function, unicode_literals
 
-import ast
+import logging
 import os
 import re
 import sys
-import urllib
 import warnings
 
-from flask_registry import (
-    BlueprintAutoDiscoveryRegistry,
-    ConfigurationRegistry,
-    ExtensionRegistry,
-    PackageRegistry,
-    Registry
-)
-
-from pkg_resources import iter_entry_points
-
-from six.moves.urllib.parse import urlparse
-
-from werkzeug.local import LocalProxy
-
-from .helpers import unicodifier, with_app_context
-from .utils import captureWarnings
-from .wrappers import Flask
-
-
-__all__ = ('create_app', 'with_app_context')
-
-
-class WSGIScriptAliasFix(object):
-
-    """WSGI ScriptAlias fix middleware.
-
-    It relies on the fact that the ``WSGI_SCRIPT_ALIAS`` environment variable
-    exists in the Apache configuration and identifies the virtual path to
-    the invenio application.
-
-    This setup will first look for the present of a file on disk. If the file
-    exists, it will serve it otherwise it calls the WSGI application.
-
-    If no ``WSGI_SCRIPT_ALIAS`` is defined, it does not alter anything.
-
-    .. code-block:: apacheconf
-
-       SetEnv WSGI_SCRIPT_ALIAS /wsgi
-       WSGIScriptAlias /wsgi /opt/invenio/invenio/invenio.wsgi
-
-       RewriteEngine on
-       RewriteCond %{REQUEST_FILENAME} !-f
-       RewriteRule ^(.*)$ /wsgi$1 [PT,L]
-
-    .. seealso::
-
-       `modwsgi Configuration Guidelines
-       <https://code.google.com/p/modwsgi/wiki/ConfigurationGuidelines>`_
-    """
-
-    def __init__(self, app):
-        """Initialize wsgi app wrapper."""
-        self.app = app
-
-    def __call__(self, environ, start_response):
-        """Parse path from ``REQUEST_URI`` to fix ``PATH_INFO``."""
-        if environ.get('WSGI_SCRIPT_ALIAS') == environ['SCRIPT_NAME']:
-            path_info = urllib.unquote_plus(
-                urlparse(environ.get('REQUEST_URI')).path
-            )  # addresses issue with url encoded arguments in Flask routes
-            environ['SCRIPT_NAME'] = ''
-            environ['PATH_INFO'] = path_info
-        return self.app(environ, start_response)
-
-
-def cleanup_legacy_configuration(app):
-    """Cleanup legacy issue in configuration."""
-    from .i18n import language_list_long
-    # Invenio is all using str objects. Let's change them to unicode
-    app.config.update(unicodifier(dict(app.config)))
-    # ... and map certain common parameters
-    app.config['CFG_LANGUAGE_LIST_LONG'] = LocalProxy(language_list_long)
-    app.config['CFG_WEBDIR'] = app.static_folder
-
-
-def register_legacy_blueprints(app):
-    """Register some legacy blueprints."""
-    @app.route('/testing')
-    def testing():
-        from flask import render_template
-        return render_template('404.html')
-
-
-def register_secret_key(app):
-    """Register sercret key in application configuration."""
-    SECRET_KEY = app.config.get('SECRET_KEY') or \
-        app.config.get('CFG_SITE_SECRET_KEY', 'change_me')
-
-    if not SECRET_KEY or SECRET_KEY == 'change_me':
-        fill_secret_key = """
-    Set variable SECRET_KEY with random string in invenio.cfg.
-
-    You can use following commands:
-    $ %s
-        """ % ('inveniomanage config create secret-key', )
-        warnings.warn(fill_secret_key, UserWarning)
-
-    app.config["SECRET_KEY"] = SECRET_KEY
-
-
-def load_site_config(app):
-    """Load default site-configuration via entry points."""
-    entry_points = list(iter_entry_points("invenio.config"))
-    if len(entry_points) > 1:
-        warnings.warn(
-            "Found multiple site configurations. This may lead to unexpected "
-            "results.",
-            UserWarning
-        )
-
-    for ep in entry_points:
-        app.config.from_object(ep.module_name)
+import ast
+from flask import Flask
+from flask_cli import FlaskCLI
+from flask_registry import BlueprintAutoDiscoveryRegistry, \
+    ConfigurationRegistry, ExtensionRegistry, PackageRegistry, Registry
 
 
 def configure_warnings():
     """Configure warnings by routing warnings to the logging system.
 
-    It also unhides DeprecationWarning.
+    It also unhides ``DeprecationWarning``.
     """
     if not sys.warnoptions:
         # Route warnings through python logging
-        captureWarnings(True)
+        logging.captureWarnings(True)
 
         # DeprecationWarning is by default hidden, hence we force the
         # "default" behavior on deprecation warnings which is not to hide
@@ -157,30 +39,111 @@ def configure_warnings():
         warnings.simplefilter("default", DeprecationWarning)
 
 
-def create_app(instance_path=None, static_folder=None, **kwargs_config):
-    """Prepare Invenio application based on Flask.
+def load_config(app, module_name, **kwargs_config):
+    """Load configuration.
 
-    Invenio consists of a new Flask application with legacy support for
-    the old WSGI legacy application and the old Python legacy
-    scripts (URLs to ``*.py`` files).
+    Configuration is loaded in the following order:
 
-    For configuration variables detected from environment variables, a prefix
-    will be used which is the uppercase version of the app name, excluding
-    any non-alphabetic ('[^A-Z]') characters.
+    1. Configuration module (i.e. ``module_name``).
+    2. Instance configuration in ``<instance folder>/<app name>.cfg``
+    3. Keyword configuration arguments.
+    4. Environment variables specified in ``<app name>_APP_CONFIG_ENVS``
+       configuration variable or comma separated list in environment variable
+       with the same name.
 
-    If `instance_path` is `None`, the `<PREFIX>_INSTANCE_PATH` environment
-    variable will be used. If that one does not exist, a path inside
-    `sys.prefix` will be used.
+    Additionally checks if ``SECRET_KEY`` is set in the configuration and warns
+    if it is not.
 
-    .. versionadded:: 2.2
-        If `static_folder` is `None`, the `<PREFIX>_STATIC_FOLDER` environment
-        variable will be used. If that one does not exist, a path inside the
-        detected `instance_path` will be used.
+    :param app: Flask application.
+    :param module_name: Configuration module.
+    :param kwargs_config: Configuration keyword arguments
+    """
+    # 1. Load site specific default configuration
+    app.config.from_object(module_name)
+
+    # 2. Load <app name>.cfg from instance folder
+    app.config.from_pyfile('{0}.cfg'.format(app.name), silent=True)
+
+    # 3. Update application config from parameters.
+    app.config.update(kwargs_config)
+
+    # 4. Update config with specified environment variables.
+    envvars = '{0}_APP_CONFIG_ENVS'.format(app.name.upper())
+
+    for cfg_name in app.config.get(envvars, os.getenv(envvars, '')).split(','):
+        cfg_name = cfg_name.strip().upper()
+        if cfg_name:
+            cfg_value = app.config.get(cfg_name)
+            cfg_value = os.getenv(cfg_name, cfg_value)
+            try:
+                cfg_value = ast.literal_eval(cfg_value)
+            except (SyntaxError, ValueError):
+                pass
+            app.config[cfg_name] = cfg_value
+            app.logger.debug("{0} = {1}".format(cfg_name, cfg_value))
+
+    # Ensure SECRET_KEY is set.
+    SECRET_KEY = app.config.get('SECRET_KEY')
+
+    if SECRET_KEY is None:
+        app.config["SECRET_KEY"] = 'change_me'
+        warnings.warn(
+            "Set variable SECRET_KEY with random string in {}".format(
+                os.path.join(app.instance_path, "{}.cfg".format(app.name)),
+            ), UserWarning)
+
+    # Initialize application registry, used for discovery and loading of
+    # configuration, extensions and blueprints
+    Registry(app=app)
+
+    app.extensions['registry'].update(
+        # Register packages listed in PACKAGES conf variable.
+        packages=PackageRegistry(app))
+
+    app.extensions['loaded'] = False
+
+
+def load_application(app):
+    """Load the application.
+
+    Assembles the application by use of ``PACKAGES`` and ``EXTENSIONS``
+    configuration variables.
+
+    1. Load extensions by calling ``setup_app()`` in module defined in
+       ``EXTENSIONS``.
+    2. Register blueprints from each module defined in ``PACAKGES`` by looking
+       searching in ``views.py`` for a ``blueprint`` or ``blueprints``
+       variable.
+
+    :param app: Flask application.
+    """
+    # Extend application config with default configuration values from packages
+    # (app config takes precedence)
+    ConfigurationRegistry(app)
+
+    app.extensions['registry'].update(
+        # Register extensions listed in EXTENSIONS conf variable.
+        extensions=ExtensionRegistry(app),
+        # Register blueprints from packages in PACKAGES configuration variable.
+        blueprints=BlueprintAutoDiscoveryRegistry(app=app),
+    )
+
+    app.extensions['loaded'] = True
+
+
+def base_app(app_name, instance_path=None, static_folder=None,
+             static_url_path='/static/', instance_relative_config=True,
+             template_folder='templates',
+             **kwargs):
+    """Create a base Flask Application.
+
+    Ensures instance path and is set and created. Instance path defaults to
+    ``<sys.prefix>/var/<app name>-instance``.
+
+    Additionally configure warnings to be routed to the Python logging system,
+    and by default makes ``DeprecationWarning`` loud.
     """
     configure_warnings()
-
-    # Flask application name
-    app_name = '.'.join(__name__.split('.')[0:2])
 
     # Prefix for env variables
     env_prefix = re.sub('[^A-Z]', '', app_name.upper())
@@ -188,12 +151,10 @@ def create_app(instance_path=None, static_folder=None, **kwargs_config):
     # Detect instance path
     instance_path = instance_path or \
         os.getenv(env_prefix + '_INSTANCE_PATH') or \
-        os.path.join(
-            sys.prefix, 'var', app_name + '-instance'
-        )
+        os.path.join(sys.prefix, 'var', app_name + '-instance')
 
     # Detect static files path
-    static_folder = static_folder or \
+    static_folder = instance_path or \
         os.getenv(env_prefix + '_STATIC_FOLDER') or \
         os.path.join(instance_path, 'static')
 
@@ -207,96 +168,34 @@ def create_app(instance_path=None, static_folder=None, **kwargs_config):
     # Create the Flask application instance
     app = Flask(
         app_name,
-        # Static files are usually handled directly by the webserver (e.g.
-        # Apache) However in case WSGI is required to handle static files too
-        # (such as when running simple server), then this flag can be
-        # turned on (it is done automatically by wsgi_handler_test).
-        # We assume anything under '/' which is static to be server directly
-        # by the webserver from CFG_WEBDIR. In order to generate independent
-        # url for static files use func:`url_for('static', filename='test')`.
-        static_url_path='',
-        static_folder=static_folder,
-        template_folder='templates',
-        instance_relative_config=True,
+        static_url_path=static_url_path,
+        static_folder=static_folder or os.path.join(instance_path, 'static'),
+        instance_relative_config=instance_relative_config,
         instance_path=instance_path,
+        template_folder=template_folder,
     )
 
-    # Handle both URLs with and without trailing slashes by Flask.
-    # @blueprint.route('/test')
-    # @blueprint.route('/test/') -> not necessary when strict_slashes == False
-    app.url_map.strict_slashes = False
-
-    #
-    # Configuration loading
-    #
-
-    # Load default configuration
-    app.config.from_object('invenio.base.config')
-
-    # Load site specific default configuration from entry points
-    load_site_config(app)
-
-    # Load invenio.cfg from instance folder
-    app.config.from_pyfile('invenio.cfg', silent=True)
-
-    # Update application config from parameters.
-    app.config.update(kwargs_config)
-
-    # Ensure SECRET_KEY has a value in the application configuration
-    register_secret_key(app)
-
-    # Update config with specified environment variables.
-    for cfg_name in app.config.get('INVENIO_APP_CONFIG_ENVS',
-                                   os.getenv('INVENIO_APP_CONFIG_ENVS',
-                                             '').split(',')):
-        cfg_name = cfg_name.strip().upper()
-        if cfg_name:
-            cfg_value = app.config.get(cfg_name)
-            cfg_value = os.getenv(cfg_name, cfg_value)
-            try:
-                cfg_value = ast.literal_eval(cfg_value)
-            except (SyntaxError, ValueError):
-                pass
-            app.config[cfg_name] = cfg_value
-            app.logger.debug("{0} = {1}".format(cfg_name, cfg_value))
-
-    # ====================
-    # Application assembly
-    # ====================
-    # Initialize application registry, used for discovery and loading of
-    # configuration, extensions and Invenio packages
-    Registry(app=app)
-
-    app.extensions['registry'].update(
-        # Register packages listed in invenio.cfg
-        packages=PackageRegistry(app))
-
-    app.extensions['registry'].update(
-        # Register extensions listed in invenio.cfg
-        extensions=ExtensionRegistry(app),
-        # Register blueprints
-        blueprints=BlueprintAutoDiscoveryRegistry(app=app),
-    )
-
-    # Extend application config with configuration from packages (app config
-    # takes precedence)
-    ConfigurationRegistry(app)
-
-    # Legacy conf cleanup
-    cleanup_legacy_configuration(app)
-
-    register_legacy_blueprints(app)
+    # Compatibility layer to support Flask 1.0 click integration on v0.10
+    FlaskCLI(app=app)
 
     return app
 
 
-def create_wsgi_app(*args, **kwargs):
-    """Create WSGI application."""
-    app = create_app(*args, **kwargs)
+def appfactory(app_name, module_name, load=True, **kwargs_config):
+    """Create a Flask application according to a defined configuration.
 
-    if app.debug:
-        from werkzeug.debug import DebuggedApplication
-        app.wsgi_app = DebuggedApplication(app.wsgi_app, evalex=True)
+    :param app_name: Flask application name.
+    :param module_name: Python configuration module.
+    :param load: Load application (instead of only the configuration).
+        Default: ``True``.
+    :param kwargs_config: Extra configuration variables for the Flask
+        application.
+    """
+    app = base_app(app_name)
 
-    app.wsgi_app = WSGIScriptAliasFix(app.wsgi_app)
+    load_config(app, module_name, **kwargs_config)
+
+    if load:
+        load_application(app)
+
     return app

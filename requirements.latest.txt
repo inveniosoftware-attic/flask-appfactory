@@ -1,0 +1,4 @@
+Flask
+click
+Flask-Registry
+Flask-CLI
