@@ -2,7 +2,7 @@
  Flask-AppFactory v0.1.0
 =========================
 
-Flask-AppFactory v0.1.0 was released on July 31, 2015.
+Flask-AppFactory v0.1.0 was released on August 3, 2015.
 
 About
 -----
