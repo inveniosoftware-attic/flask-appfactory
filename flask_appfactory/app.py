@@ -154,7 +154,7 @@ def base_app(app_name, instance_path=None, static_folder=None,
         os.path.join(sys.prefix, 'var', app_name + '-instance')
 
     # Detect static files path
-    static_folder = instance_path or \
+    static_folder = static_folder or \
         os.getenv(env_prefix + '_STATIC_FOLDER') or \
         os.path.join(instance_path, 'static')
 
