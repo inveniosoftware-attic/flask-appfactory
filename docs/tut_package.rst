@@ -41,7 +41,7 @@ registered on the Flask application by Flask-AppFactory.
 This example blueprint simply renders the template ``mymodule.html`` and
 pass it the value of ``MYMODULE_GREETING`` (line 15) that we ensured was set in
 ``config.py``. Notice, also that the Blueprint's template folder is set in line
-8 (without it, the templates in the next section is not found).
+8 (without it, the templates in the next section are not found).
 
 
 Templates

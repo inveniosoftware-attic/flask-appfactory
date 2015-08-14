@@ -26,11 +26,12 @@ application configuration:
 
 The ``PACKAGES`` defines the list of resuable packages that
 Flask-AppFactory should load. The order of packages is important as templates,
-translations etc. is loaded according this order.
+translations etc. is loaded according to this order.
 
 The ``EXTENSIONS`` defines the list of extensions that Flask-AppFactory
 should load. You'll see that in addition to ``myexts.sqlalchemy`` we also
-load ``flask_appfactory.ext.jinja2``.
+load ``flask_appfactory.ext.jinja2``. This extension is needed in order to make
+the template loader aware of the order of packages.
 
 
 Application factory
