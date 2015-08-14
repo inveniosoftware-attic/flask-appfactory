@@ -59,7 +59,8 @@ def load_config(app, module_name, **kwargs_config):
     :param kwargs_config: Configuration keyword arguments
     """
     # 1. Load site specific default configuration
-    app.config.from_object(module_name)
+    if module_name:
+        app.config.from_object(module_name)
 
     # 2. Load <app name>.cfg from instance folder
     app.config.from_pyfile('{0}.cfg'.format(app.name), silent=True)
@@ -119,8 +120,6 @@ def load_application(app):
     """
     # Extend application config with default configuration values from packages
     # (app config takes precedence)
-    ConfigurationRegistry(app)
-
     app.extensions['registry'].update(
         # Register extensions listed in EXTENSIONS conf variable.
         extensions=ExtensionRegistry(app),
@@ -128,13 +127,14 @@ def load_application(app):
         blueprints=BlueprintAutoDiscoveryRegistry(app=app),
     )
 
+    ConfigurationRegistry(app)
+
     app.extensions['loaded'] = True
 
 
 def base_app(app_name, instance_path=None, static_folder=None,
              static_url_path='/static/', instance_relative_config=True,
-             template_folder='templates',
-             **kwargs):
+             template_folder='templates', flask_cls=Flask):
     """Create a base Flask Application.
 
     Ensures instance path and is set and created. Instance path defaults to
@@ -166,10 +166,10 @@ def base_app(app_name, instance_path=None, static_folder=None,
         pass
 
     # Create the Flask application instance
-    app = Flask(
+    app = flask_cls(
         app_name,
         static_url_path=static_url_path,
-        static_folder=static_folder or os.path.join(instance_path, 'static'),
+        static_folder=static_folder,
         instance_relative_config=instance_relative_config,
         instance_path=instance_path,
         template_folder=template_folder,
