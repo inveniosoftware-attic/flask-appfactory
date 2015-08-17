@@ -16,6 +16,12 @@ CLI factory
    :members:
    :undoc-members:
 
+Celery factory
+--------------
+.. automodule:: flask_appfactory.celery
+   :members:
+   :undoc-members:
+
 Extensions
 ----------
 

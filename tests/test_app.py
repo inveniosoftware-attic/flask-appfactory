@@ -12,7 +12,11 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
 import os
+import shutil
+import tempfile
+
 from flask_appfactory import appfactory
+from flask_appfactory.app import base_app
 
 
 def test_dummy_app():
@@ -93,6 +97,18 @@ def test_simple_app():
         rv = c.get('/')
         assert rv.status_code == 200
         assert rv.data == 'TEST'.encode('utf-8')
+
+
+def test_instance_path_creation():
+    """Test instance path creation."""
+    path = tempfile.mkdtemp()
+    try:
+        instance_path = os.path.join(path, "myinstance")
+        assert not os.path.exists(instance_path)
+        base_app('instance', instance_path=instance_path)
+        assert os.path.exists(instance_path)
+    finally:
+        shutil.rmtree(path)
 
 
 def test_simple_app_noload():

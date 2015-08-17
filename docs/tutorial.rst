@@ -14,3 +14,4 @@ The full source code by viewed in the ``examples`` folder in the package or on
    tut_package
    tut_ext
    tut_app
+   tut_celery

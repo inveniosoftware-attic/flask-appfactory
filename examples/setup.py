@@ -15,7 +15,7 @@ setup(
     },
     install_requires=[
         'Flask>=0.10',
-        'Flask-AppFactory',
+        'Flask-AppFactory[celery]',
         'Flask-SQLAlchemy',
     ],
 )

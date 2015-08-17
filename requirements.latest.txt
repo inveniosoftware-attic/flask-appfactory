@@ -2,3 +2,4 @@ Flask
 click
 Flask-Registry
 Flask-CLI
+Flask-CeleryExt

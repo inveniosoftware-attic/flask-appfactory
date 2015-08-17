@@ -31,7 +31,9 @@ translations etc. is loaded according to this order.
 The ``EXTENSIONS`` defines the list of extensions that Flask-AppFactory
 should load. You'll see that in addition to ``myexts.sqlalchemy`` we also
 load ``flask_appfactory.ext.jinja2``. This extension is needed in order to make
-the template loader aware of the order of packages.
+the template loader aware of the order of packages. We also load
+``flask_celeryext:FlaskCeleryExt``, which will be explained in detail in
+Step 4 together with ``BROKER_URL``.
 
 
 Application factory

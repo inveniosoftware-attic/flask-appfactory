@@ -36,7 +36,7 @@ IS_FLASK_1_0 = LooseVersion(flask_version) >= LooseVersion("0.11-dev")
 try:
     # Deprecated in Flask commit 817b72d484d353800d907b3580c899314bf7f3c6
     from flask.templating import blueprint_is_module
-except ImportError:
+except ImportError:  # pragma: no cover
     def blueprint_is_module(blueprint):
         """Dummy function for Flask 1.0."""
         return False
@@ -54,11 +54,11 @@ class OrderAwareDispatchingJinjaLoader(DispatchingJinjaLoader):
     def _iter_loaders(self, template):
         for blueprint in self.app.extensions['registry']['blueprints']:
             if blueprint_is_module(blueprint):
-                continue
+                continue  # pragma: no cover
             loader = blueprint.jinja_loader
             if loader is not None:
                 if IS_FLASK_1_0:
-                    yield blueprint, loader
+                    yield blueprint, loader  # pragma: no cover
                 else:
                     yield loader, template
 

@@ -84,7 +84,7 @@ setup(
         'Flask-CLI>=0.2.1',
     ],
     extras_require={
-        'docs': ['sphinx_rtd_theme'],
+        'celery': ['Flask-CeleryExt>=0.1.0'],
     },
     cmdclass={'test': PyTest},
     classifiers=[

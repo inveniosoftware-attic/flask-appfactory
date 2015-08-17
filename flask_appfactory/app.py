@@ -162,7 +162,7 @@ def base_app(app_name, instance_path=None, static_folder=None,
     try:
         if not os.path.exists(instance_path):
             os.makedirs(instance_path)
-    except Exception:
+    except Exception:  # pragma: no cover
         pass
 
     # Create the Flask application instance
