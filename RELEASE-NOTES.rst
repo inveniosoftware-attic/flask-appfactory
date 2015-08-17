@@ -1,8 +1,8 @@
 =========================
- Flask-AppFactory v0.1.0
+ Flask-AppFactory v0.2.0
 =========================
 
-Flask-AppFactory v0.1.0 was released on August 3, 2015.
+Flask-AppFactory v0.2.0 was released on August 17, 2015.
 
 About
 -----
@@ -15,10 +15,21 @@ Installation
 
    $ pip install flask-appfactory
 
+What's new
+----------
+
+- Adds support for creating Celery applications with Flask-AppFactory.
+
+- Adds support for using a custom Flask application class.
+
+- Fixes minor issues with configuration registry loading order
+
+- Increases test coverage to 100%.
+
 Documentation
 -------------
 
-   http://flask-appfactory.readthedocs.org/en/v0.1.0
+   http://flask-appfactory.readthedocs.org/en/v0.2.0
 
 Homepage
 --------
