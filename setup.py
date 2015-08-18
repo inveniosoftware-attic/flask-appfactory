@@ -74,7 +74,7 @@ setup(
     author='Invenio Collaboration',
     author_email='info@invenio-software.org',
     long_description=open('README.rst').read(),
-    packages=['flask_appfactory', ],
+    packages=['flask_appfactory', 'flask_appfactory.ext', ],
     zip_safe=False,
     platforms='any',
     tests_require=tests_require,
