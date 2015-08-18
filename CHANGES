@@ -1,6 +1,13 @@
 Changes
 =======
 
+Version 0.2.1 (released 2015-08-18)
+
+- Fixes issue with flask_appfactory.ext not being installed due to missing
+  entry in setup.py.
+
+- Adds better documentation about API changes.
+
 Version 0.2.0 (released 2015-08-17)
 
 - Adds support for creating Celery applications with Flask-AppFactory.
