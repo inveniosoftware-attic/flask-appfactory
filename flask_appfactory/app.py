@@ -142,6 +142,18 @@ def base_app(app_name, instance_path=None, static_folder=None,
 
     Additionally configure warnings to be routed to the Python logging system,
     and by default makes ``DeprecationWarning`` loud.
+
+    .. versionchanged:: v0.2.0
+       Added ``flask_cls`` parameter.
+
+    :param app_name: Flask application name.
+    :param instance_path: Instance path
+    :param static_folder: Static folder.
+    :param static_url_path: URL path of static folder. Default: ``/static/``.
+    :param instance_relative_config: Use instance relative config
+        Default: ``True``.
+    :param template_folder: Template folder. Default: ``templates``.
+    :param flask_cls: Flask Application class. Default: ``Flask``.
     """
     configure_warnings()
 

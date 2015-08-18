@@ -16,13 +16,18 @@ from flask_registry import ModuleAutoDiscoveryRegistry
 
 
 def load_tasks(app):
-    """Load Celery tasks from installed packages."""
+    """Load Celery tasks from installed packages.
+
+    .. versionadded:: v0.2.0
+    """
     app.extensions['registry']['tasks'] = ModuleAutoDiscoveryRegistry(
             module_name='tasks', app=app)
 
 
 def celeryfactory(app):
     """Create a Celery application based on Flask application.
+
+    .. versionadded:: v0.2.0
 
     :param app: Flask application instance.
     """
