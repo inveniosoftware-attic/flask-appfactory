@@ -24,7 +24,7 @@ cache:
 
 install:
   # Install test dependencies
-  - "travis_retry pip install coveralls pep257 Sphinx"
+  - "travis_retry pip install coveralls pep257 Sphinx twine wheel"
   - "travis_retry pip install pytest pytest-pep8 pytest-cov pytest-cache"
   - "travis_retry pip install -r requirements.${REQUIREMENTS}.txt"
   - "travis_retry pip install -e ."
