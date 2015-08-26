@@ -9,14 +9,20 @@ FROM python:2.7
 
 # Install some prerequisites ahead of `setup.py` in order to profit
 # from the docker build cache:
-RUN pip install coveralls \
+RUN pip install Flask \
+                Flask-CLI \
+                Flask-Registry \
+                Sphinx \
+                Werkzeug \
+                click \
+                coveralls \
                 ipython \
+                itsdangerous \
                 pep257 \
                 pytest \
-                pytest-pep8 \
                 pytest-cache \
                 pytest-cov \
-                Sphinx
+                pytest-pep8
 
 # Add sources to `code` and work there:
 WORKDIR /code
