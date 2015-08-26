@@ -12,11 +12,15 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
 from flask_appfactory import appfactory
-from flask_appfactory.celery import celeryfactory
+
+import pytest
 
 
 def test_dummy_app():
     """"Test celery app creation."""
+    pytest.importorskip("celery")
+    from flask_appfactory.celery import celeryfactory
+
     class conf:
         EXTENSIONS = ['flask_celeryext:FlaskCeleryExt']
 
@@ -29,6 +33,8 @@ def test_dummy_app():
 
 def test_dummy_app_noext():
     """"Test celery app creation without extension."""
+    pytest.importorskip("celery")
+    from flask_appfactory.celery import celeryfactory
     app = appfactory("app3", None)
     celery = celeryfactory(app)
     assert celery
