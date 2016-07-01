@@ -72,7 +72,7 @@ setup(
     url='http://github.com/inveniosoftware/flask-appfactory/',
     license='BSD',
     author='Invenio Collaboration',
-    author_email='info@invenio-software.org',
+    author_email='info@inveniosoftware.org',
     long_description=open('README.rst').read(),
     packages=['flask_appfactory', 'flask_appfactory.ext', ],
     zip_safe=False,
